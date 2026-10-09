@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Номерной Магнат</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+background:linear-gradient(180deg,#1a1a2e,#0f0f1e);color:#fff;padding:16px;min-height:100vh}
+.container{max-width:480px;margin:0 auto;padding-bottom:80px}
+.profile-card{background:linear-gradient(135deg,#16213e,#0f3460);border-radius:16px;
+padding:20px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;
+box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.balance{font-size:26px;font-weight:bold;color:#f0c040}
+.balance-label{font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:1px}
+.user-name{font-size:16px;font-weight:600;margin-bottom:4px}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:rgba(255,255,255,.05);
+border-radius:12px;padding:4px;overflow-x:auto}
+.tab{flex:1;padding:10px 6px;text-align:center;border-radius:10px;font-size:12px;
+cursor:pointer;transition:all .2s;opacity:.6;white-space:nowrap}
+.tab.active{background:#e94560;opacity:1;font-weight:600}
+.section{display:none}
+.section.active{display:block}
+.region-selector{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:8px}
+.region-chip{padding:8px 16px;border-radius:20px;background:rgba(255,255,255,.1);
+border:1px solid rgba(255,255,255,.2);font-size:13px;white-space:nowrap;cursor:pointer;color:#fff}
+.region-chip.active{background:#e94560;border-color:#e94560}
+.region-chip.locked{opacity:.4}
+.roulette-area{text-align:center;margin:20px 0}
+.spin-btn{background:linear-gradient(135deg,#e94560,#c62a44);color:#fff;border:none;
+border-radius:50%;width:160px;height:160px;font-size:20px;font-weight:bold;cursor:pointer;
+box-shadow:0 0 30px rgba(233,69,96,.5);transition:all .3s;margin:10px auto;display:block}
+.spin-btn:active{transform:scale(.95);box-shadow:0 0 50px rgba(233,69,96,.8)}
+.spin-btn:disabled{opacity:.5;cursor:not-allowed}
+.spin-cost{font-size:13px;opacity:.7;margin-top:8px}
+.bonus-btn{background:linear-gradient(135deg,#f0c040,#d4a020);color:#000;border:none;
+border-radius:12px;padding:14px 20px;font-size:15px;font-weight:600;width:100%;
+cursor:pointer;margin-bottom:12px}
+.inventory-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-height:500px;overflow-y:auto}
+.inv-item{background:rgba(255,255,255,.05);border-radius:12px;padding:12px;
+border-left:4px solid #666;cursor:pointer;transition:transform .2s}
+.inv-item:active{transform:scale(.97)}
+.inv-item.common{border-color:#888}
+.inv-item.uncommon{border-color:#4caf50}
+.inv-item.rare{border-color:#2196f3}
+.inv-item.epic{border-color:#9c27b0}
+.inv-item.legendary{border-color:#ff9800}
+.inv-item.secret{border-color:#f44336}
+.inv-number{font-size:15px;font-weight:bold}
+.inv-rarity{font-size:11px;margin-top:4px}
+.inv-price{font-size:12px;color:#f0c040;margin-top:4px}
+.result-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;
+align-items:center;justify-content:center;z-index:100;padding:20px}
+.result-overlay.active{display:flex}
+.result-card{background:linear-gradient(135deg,#16213e,#0f3460);border-radius:24px;
+padding:30px;text-align:center;width:100%;max-width:320px;animation:popIn .3s ease}
+@keyframes popIn{0%{transform:scale(.8);opacity:0}100%{transform:scale(1);opacity:1}}
+.result-number{font-size:26px;font-weight:bold;margin:16px 0}
+.result-rarity{font-size:20px;font-weight:600;margin-bottom:8px}
+.result-price{font-size:16px;color:#f0c040}
+.result-actions{display:flex;gap:10px;margin-top:20px}
+.result-actions button{flex:1;padding:14px;border:none;border-radius:12px;font-size:15px;
+font-weight:600;cursor:pointer}
+.btn-sell{background:#f0c040;color:#000}
+.btn-keep{background:rgba(255,255,255,.15);color:#fff}
+.achievement{background:rgba(255,255,255,.05);padding:12px;border-radius:12px;
+margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.achievement.done{background:rgba(76,175,80,.2);border:1px solid #4caf50}
+.auction-item{background:rgba(255,255,255,.05);padding:12px;border-radius:12px;
+margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.auction-buy{background:#f0c040;color:#000;border:none;padding:8px 14px;
+border-radius:8px;font-weight:600;cursor:pointer}
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:1px;
+opacity:.7;margin:16px 0 10px}
+.case-card{background:linear-gradient(135deg,#2a1a3e,#1a1030);border-radius:14px;
+padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.case-buy{background:#f0c040;color:#000;border:none;padding:10px 18px;
+border-radius:10px;font-weight:700;cursor:pointer}
+.task-item{background:rgba(255,255,255,.05);padding:12px;border-radius:12px;
+margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.task-item.done{background:rgba(76,175,80,.2);border:1px solid #4caf50}
+.rank-item{background:rgba(255,255,255,.05);padding:12px;border-radius:12px;
+margin-bottom:6px;display:flex;justify-content:space-between;font-size:14px}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="profile-card">
+        <div>
+            <div class="user-name" id="userName">Игрок</div>
+            <div class="balance-label">Баланс</div>
+            <div class="balance" id="balance">0 ₽</div>
+        </div>
+        <div style="text-align:right">
+            <div class="balance-label">Номеров</div>
+            <div style="font-size:22px" id="invCount">0</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="play">🎰 Игра</div>
+        <div class="tab" data-tab="inv">📦 Вещи</div>
+        <div class="tab" data-tab="cases">📦 Кейсы</div>
+        <div class="tab" data-tab="auc">🏛 Аукцион</div>
+        <div class="tab" data-tab="top">🏆 Топ</div>
+        <div class="tab" data-tab="tasks">🎯 Задания</div>
+    </div>
+
+    <div class="section active" id="tab-play">
+        <button class="bonus-btn" id="bonusBtn">🎁 Забрать бонус</button>
+        <div class="region-selector" id="regionSelector"></div>
+        <div class="roulette-area">
+            <button class="spin-btn" id="spinBtn">КРУТИТЬ</button>
+            <div class="spin-cost">Стоимость: 500 ₽</div>
+        </div>
+    </div>
+
+    <div class="section" id="tab-inv">
+        <div class="inventory-grid" id="inventory"></div>
+    </div>
+
+    <div class="section" id="tab-cases">
+        <div class="section-title">Магазин кейсов</div>
+        <div id="casesList"></div>
+    </div>
+
+    <div class="section" id="tab-auc">
+        <div class="section-title">Активные лоты</div>
+        <div id="auctionList"></div>
+    </div>
+
+    <div class="section" id="tab-top">
+        <div class="section-title">Топ-20 игроков</div>
+        <div id="topList"></div>
+    </div>
+
+    <div class="section" id="tab-tasks">
+        <div class="section-title">Ежедневные задания</div>
+        <div id="tasksList"></div>
+    </div>
+</div>
+
+<div class="result-overlay" id="resultOverlay">
+    <div class="result-card">
+        <div style="font-size:13px;opacity:.7">ВЫ ПОЛУЧИЛИ</div>
+        <div class="result-number" id="resultNumber">А 777 АА 77</div>
+        <div class="result-rarity" id="resultRarity">Легендарный</div>
+        <div class="result-price" id="resultPrice">100 000 ₽</div>
+        <div class="result-actions">
+            <button class="btn-sell" id="sellBtn">Продать</button>
+            <button class="btn-keep" id="keepBtn">Оставить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+const user = tg.initDataUnsafe?.user || { id:0, first_name:'Гость', username:'' };
+document.getElementById('userName').textContent = user.first_name;
+const API = window.location.origin;
+
+const RARITIES = {
+    common:    { name:'Обычный',     basePrice:100,     color:'#888' },
+    uncommon:  { name:'Необычный',   basePrice:1000,    color:'#4caf50' },
+    rare:      { name:'Редкий',      basePrice:5000,    color:'#2196f3' },
+    epic:      { name:'Эпический',   basePrice:25000,   color:'#9c27b0' },
+    legendary: { name:'Легендарный', basePrice:100000,  color:'#ff9800' },
+    secret:    { name:'Секретный',   basePrice:1000000, color:'#f44336' }
+};
+const REGIONS = [
+    { code:'77', name:'Москва',    multiplier:3,   unlocked:true },
+    { code:'78', name:'СПб',       multiplier:2.5, unlocked:true },
+    { code:'16', name:'Татарстан', multiplier:2,   unlocked:true },
+    { code:'66', name:'Урал',      multiplier:1.8, unlocked:false, cost:10000 },
+    { code:'25', name:'ДВ',        multiplier:1.5, unlocked:false, cost:25000 }
+];
+const CASES = {
+    basic:     { name:'Обычный кейс',     cost:5000,   desc:'Минимум: Необычный' },
+    rare:      { name:'Редкий кейс',      cost:25000,  desc:'Минимум: Редкий' },
+    epic:      { name:'Эпический кейс',   cost:100000, desc:'Минимум: Эпический' },
+    legendary: { name:'Легендарный кейс', cost:500000, desc:'Минимум: Легендарный' }
+};
+const ACHIEVEMENTS = [
+    { id:'first_spin',    name:'Первая крутка',    desc:'1 крутка',              reward:500,   check:s=>s.totalSpins>=1 },
+    { id:'spins_10',      name:'Новичок',          desc:'10 круток',             reward:1000,  check:s=>s.totalSpins>=10 },
+    { id:'spins_100',     name:'Азартный',         desc:'100 круток',            reward:5000,  check:s=>s.totalSpins>=100 },
+    { id:'get_rare',      name:'Редкая находка',   desc:'Редкий номер',          reward:2000,  check:s=>s.hasRarity('rare') },
+    { id:'get_epic',      name:'Эпик!',            desc:'Эпический номер',       reward:10000, check:s=>s.hasRarity('epic') },
+    { id:'get_legendary', name:'Легенда',          desc:'Легендарный номер',     reward:50000, check:s=>s.hasRarity('legendary') },
+    { id:'get_secret',    name:'Секретный агент',  desc:'Секретный номер',       reward:500000,check:s=>s.hasRarity('secret') },
+    { id:'millionaire',   name:'Миллионер',        desc:'1 000 000 ₽',           reward:0,     check:s=>s.balance>=1000000 }
+];
+const TASKS = [
+    { id:'spin5',    name:'5 круток',       reward:500,  check:s=>s.totalSpins>=5 },
+    { id:'spin20',   name:'20 круток',      reward:2000, check:s=>s.totalSpins>=20 },
+    { id:'sell3',    name:'Продать 3 номера', reward:1000, check:s=>(s.soldCount||0)>=3 },
+    { id:'buy_case', name:'Купить 1 кейс',  reward:1500, check:s=>(s.casesOpened||0)>=1 }
+];
+
+let state = {
+    userId:user.id, balance:10000, inventory:[], achievements:[], totalSpins:0,
+    totalEarned:0, currentRegion:'77', soldCount:0, casesOpened:0, dailyTasks:{},
+    hasRarity(r){ return this.inventory.some(i=>i.rarity===r); }
+};
+
+async function api(path, body){
+    const res = await fetch(API+path,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+    });
+    return res.json();
+}
+
+async function loadPlayer(){
+    if(!user.id) return;
+    try{
+        const p = await fetch(API+'/api/player',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                user_id:user.id,
+                username:user.username||'',
+                first_name:user.first_name||''
+            })
+        }).then(r=>r.json());
+        if(p.banned){ tg.showAlert('Вы забанены'); tg.close(); return; }
+        Object.assign(state,{
+            balance:p.balance, inventory:p.inventory||[],
+            achievements:p.achievements||[], totalSpins:p.total_spins||0,
+            totalEarned:p.total_earned||0, dailyTasks:p.daily_tasks||{}
+        });
+    }catch(e){ console.error(e); }
+}
+
+async function savePlayer(){
+    if(!user.id) return;
+    await api('/api/save',{
+        user_id:user.id, balance:state.balance, inventory:state.inventory,
+        total_spins:state.totalSpins, achievements:state.achievements,
+        daily_tasks:state.dailyTasks, total_earned:state.totalEarned
+    });
+}
+
+function updateUI(){
+    document.getElementById('balance').textContent = state.balance.toLocaleString('ru-RU')+' ₽';
+    document.getElementById('invCount').textContent = state.inventory.length;
+    
+    document.getElementById('inventory').innerHTML = state.inventory.slice().reverse().map((item,i)=>{
+        const realIdx = state.inventory.length-1-i;
+        return `<div class="inv-item ${item.rarity}" data-idx="${realIdx}">
+            <div class="inv-number">${item.number}</div>
+            <div class="inv-rarity" style="color:${RARITIES[item.rarity].color}">${RARITIES[item.rarity].name}</div>
+            <div class="inv-price">${item.price.toLocaleString('ru-RU')} ₽</div>
+        </div>`;
+    }).join('');
+    
+    renderTasks();
+}
+
+function renderRegions(){
+    document.getElementById('regionSelector').innerHTML = REGIONS.map(r=>`
+        <div class="region-chip ${r.code===state.currentRegion?'active':''} ${!r.unlocked?'locked':''}" data-code="${r.code}">
+            ${r.name}${!r.unlocked?' 🔒 '+r.cost.toLocaleString()+'₽':''}
+        </div>
+    `).join('');
+    document.querySelectorAll('.region-chip').forEach(chip=>{
+        chip.onclick = ()=>{
+            const region = REGIONS.find(r=>r.code===chip.dataset.code);
+            if(!region.unlocked){
+                if(state.balance>=region.cost){
+                    state.balance -= region.cost;
+                    region.unlocked = true;
+                    savePlayer(); updateUI(); renderRegions();
+                }else{ tg.showAlert('Недостаточно денег!'); }
+                return;
+            }
+            state.currentRegion = region.code;
+            renderRegions();
+        };
+    });
+}
+
+function generateNumber(regionCode){
+    const letters = 'АВЕКМНОРСТУХ';
+    const l1 = letters[Math.floor(Math.random()*letters.length)];
+    const l2 = letters[Math.floor(Math.random()*letters.length)];
+    const digits = Array.from({length:3},()=>Math.floor(Math.random()*10));
+    let rarity = 'common';
+    const allSame = digits.every(d=>d===digits[0]);
+    const isMirror = digits[0]===digits[2];
+    const isSequence = Math.abs(digits[0]-digits[1])===1 && Math.abs(digits[1]-digits[2])===1;
+    const isRound = digits[1]===0 && digits[2]===0;
+    if(digits[0]===0 && digits[1]===0 && digits[2]===7) rarity='secret';
+    else if(allSame && digits[0]>=7) rarity='legendary';
+    else if(allSame) rarity='epic';
+    else if(isMirror && digits[0]!==0) rarity='rare';
+    else if(isRound || (isSequence && digits[0]!==0)) rarity='uncommon';
+    const number = `${l1} ${digits.join('')} ${l2}${l2} ${regionCode}`;
+    return { number, rarity, regionCode };
+}
+
+function calculatePrice(n){
+    const region = REGIONS.find(r=>r.code===n.regionCode);
+    const base = RARITIES[n.rarity].basePrice;
+    const mult = region?region.multiplier:1;
+    return Math.floor(base*mult*(0.9+Math.random()*0.2));
+}
+
+let currentResult = null;
+
+document.getElementById('spinBtn').onclick = async ()=>{
+    if(state.balance<500){ tg.showAlert('Нужно 500 ₽'); return; }
+    state.balance -= 500;
+    state.totalSpins++;
+    const n = generateNumber(state.currentRegion);
+    const price = calculatePrice(n);
+    currentResult = {...n, price};
+    document.getElementById('resultNumber').textContent = n.number;
+    document.getElementById('resultRarity').textContent = RARITIES[n.rarity].name;
+    document.getElementById('resultRarity').style.color = RARITIES[n.rarity].color;
+    document.getElementById('resultPrice').textContent = price.toLocaleString('ru-RU')+' ₽';
+    document.getElementById('resultOverlay').classList.add('active');
+    if(tg.HapticFeedback){
+        tg.HapticFeedback.notificationOccurred(['legendary','secret'].includes(n.rarity)?'success':'warning');
+    }
+    checkAchievements(); updateUI(); savePlayer();
+};
+
+document.getElementById('sellBtn').onclick = ()=>{
+    if(currentResult){
+        state.balance += currentResult.price;
+        state.totalEarned += currentResult.price;
+        state.soldCount = (state.soldCount||0)+1;
+        currentResult = null;
+        document.getElementById('resultOverlay').classList.remove('active');
+        updateUI(); savePlayer();
+    }
+};
+
+document.getElementById('keepBtn').onclick = ()=>{
+    if(currentResult){
+        state.inventory.push(currentResult);
+        currentResult = null;
+        document.getElementById('resultOverlay').classList.remove('active');
+        updateUI(); savePlayer();
+    }
+};
+
+document.getElementById('inventory').onclick = e=>{
+    const el = e.target.closest('.inv-item');
+    if(!el) return;
+    const idx = +el.dataset.idx;
+    const item = state.inventory[idx];
+    tg.showConfirm(`Что делать с ${item.number}?\n\nOK = продать за ${item.price.toLocaleString('ru-RU')} ₽\nCancel = выставить на аукцион`, ok=>{
+        if(ok){
+            state.balance += item.price;
+            state.totalEarned += item.price;
+            state.soldCount = (state.soldCount||0)+1;
+            state.inventory.splice(idx,1);
+            updateUI(); savePlayer();
+        }else{
+            const price = prompt('Цена лота:', item.price);
+            if(price && !isNaN(price)){
+                api('/api/auction/add',{
+                    user_id:user.id, number:item.number,
+                    rarity:item.rarity, price:+price
+                });
+                state.inventory.splice(idx,1);
+                updateUI(); savePlayer();
+                tg.showAlert('✅ Выставлено на аукцион!');
+            }
+        }
+    });
+};
+
+document.getElementById('bonusBtn').onclick = async ()=>{
+    const r = await api('/api/bonus',{user_id:user.id});
+    if(r.ok){ state.balance = r.balance; tg.showAlert(`🎁 +${r.bonus} ₽`); updateUI(); }
+    else{ tg.showAlert(r.message); }
+};
+
+function checkAchievements(){
+    ACHIEVEMENTS.forEach(a=>{
+        if(!state.achievements.includes(a.id) && a.check(state)){
+            state.achievements.push(a.id);
+            if(a.reward>0){ state.balance += a.reward; tg.showAlert(`🏆 ${a.name}\n+${a.reward} ₽`); }
+        }
+    });
+}
+
+function renderTasks(){
+    const today = new Date().toISOString().slice(0,10);
+    if(!state.dailyTasks.date || state.dailyTasks.date !== today){
+        state.dailyTasks = { date:today, completed:[] };
+    }
+    document.getElementById('tasksList').innerHTML = TASKS.map(t=>{
+        const done = state.dailyTasks.completed.includes(t.id);
+        const canClaim = !done && t.check(state);
+        return `<div class="task-item ${done?'done':''}">
+            <div>
+                <div style="font-weight:600">${done?'✅':'⭕'} ${t.name}</div>
+                <div style="font-size:12px;opacity:.7">+${t.reward} ₽</div>
+            </div>
+            ${canClaim?`<button class="case-buy" data-task="${t.id}">Забрать</button>`:''}
+        </div>`;
+    }).join('');
+    document.querySelectorAll('[data-task]').forEach(b=>{
+        b.onclick = ()=>{
+            const t = TASKS.find(x=>x.id===b.dataset.task);
+            if(t && !state.dailyTasks.completed.includes(t.id)){
+                state.dailyTasks.completed.push(t.id);
+                state.balance += t.reward;
+                savePlayer(); updateUI();
+                tg.showAlert(`✅ +${t.reward} ₽`);
+            }
+        };
+    });
+}
+
+function renderCases(){
+    document.getElementById('casesList').innerHTML = Object.entries(CASES).map(([k,c])=>`
+        <div class="case-card">
+            <div>
+                <div style="font-weight:700;font-size:15px">📦 ${c.name}</div>
+                <div style="font-size:12px;opacity:.7;margin-top:4px">${c.desc}</div>
+                <div style="font-size:13px;color:#f0c040;margin-top:4px">${c.cost.toLocaleString('ru-RU')} ₽</div>
+            </div>
+            <button class="case-buy" data-case="${k}">Открыть</button>
+        </div>
+    `).join('');
+    document.querySelectorAll('[data-case]').forEach(b=>{
+        b.onclick = async ()=>{
+            const r = await api('/api/case',{user_id:user.id, case:b.dataset.case});
+            if(!r.ok){ tg.showAlert(r.message); return; }
+            state.balance = r.balance;
+            state.casesOpened = (state.casesOpened||0)+1;
+            currentResult = { number:r.number, rarity:r.rarity, price:r.price };
+            document.getElementById('resultNumber').textContent = r.number;
+            document.getElementById('resultRarity').textContent = RARITIES[r.rarity].name;
+            document.getElementById('resultRarity').style.color = RARITIES[r.rarity].color;
+            document.getElementById('resultPrice').textContent = r.price.toLocaleString('ru-RU')+' ₽';
+            document.getElementById('resultOverlay').classList.add('active');
+            updateUI(); savePlayer();
+        };
+    });
+}
+
+async function loadAuction(){
+    try{
+        const list = await fetch(API+'/api/auction/list').then(r=>r.json());
+        document.getElementById('auctionList').innerHTML = list.length
+            ? list.map(l=>`<div class="auction-item">
+                <div>
+                    <div style="font-weight:600">${l.number}</div>
+                    <div style="font-size:12px;color:${RARITIES[l.rarity].color}">${RARITIES[l.rarity].name}</div>
+                    <div style="font-size:13px;color:#f0c040">${l.price.toLocaleString('ru-RU')} ₽</div>
+                </div>
+                ${l.seller_id!==user.id?`<button class="auction-buy" data-id="${l.id}">Купить</button>`:'<span style="opacity:.5;font-size:12px">Ваш</span>'}
+            </div>`).join('')
+            : '<div style="opacity:.5">Пока нет лотов</div>';
+        document.querySelectorAll('.auction-buy').forEach(b=>{
+            b.onclick = async ()=>{
+                const r = await api('/api/auction/buy',{user_id:user.id, auction_id:+b.dataset.id});
+                if(r.ok){ tg.showAlert('✅ Куплено!'); await loadPlayer(); updateUI(); loadAuction(); }
+                else{ tg.showAlert(r.message); }
+            };
+        });
+    }catch(e){ console.error(e); }
+}
+
+async function loadTop(){
+    try{
+        const list = await fetch(API+'/api/top').then(r=>r.json());
+        const medals = ['🥇','🥈','🥉'];
+        document.getElementById('topList').innerHTML = list.map((p,i)=>`
+            <div class="rank-item">
+                <div>${medals[i]||(i+1)+'.'} ${p.name}</div>
+                <div style="color:#f0c040">${p.balance.toLocaleString('ru-RU')} ₽</div>
+            </div>
+        `).join('');
+    }catch(e){ console.error(e); }
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick = ()=>{
+        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+        if(t.dataset.tab==='auc') loadAuction();
+        if(t.dataset.tab==='top') loadTop();
+        if(t.dataset.tab==='cases') renderCases();
+    };
+});
+
+(async ()=>{
+    await loadPlayer();
+    renderRegions();
+    renderCases();
+    updateUI();
+    if(tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+})();
+</script>
+</body>
+</html>
